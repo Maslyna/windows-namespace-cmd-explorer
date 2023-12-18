@@ -14,4 +14,13 @@ public:
         }
         return 1;
     }
+
+    bool ArgParamExists(int argc, _TCHAR** argv, PCWSTR elem) {
+        for (int i = 1; i < argc; i++) {
+            if (_tcscmp(argv[i], elem) == 0) {
+                return true;
+            }
+        }
+        return false;
+    }
 };

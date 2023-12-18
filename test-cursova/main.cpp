@@ -3,64 +3,41 @@
 #include <cstdio>
 #include <winternl.h>
 #include <vector>
+#include <string>
 #include <algorithm>
 #include "ntutil.h"
 #include "cmdutil.h"
 
 
-int GetObjects(NTSTATUS& ntStatus, OBJECT_ATTRIBUTES& oa, UNICODE_STRING& objname, HANDLE& hDeviceDir, PCWSTR path, BYTE* buf) {
-	RtlInitUnicodeString_(&objname, path);
-	InitializeObjectAttributes(&oa, &objname, 0, NULL, NULL);
-	ntStatus = NtOpenDirectoryObject(&hDeviceDir, DIRECTORY_QUERY | DIRECTORY_TRAVERSE, &oa);
+int PrintDirectoryObjectsInfo(std::vector<OBJECT_DIRECTORY_INFORMATION> entries) {
+	int maxNameLength = 0;
+	int maxTypeLength = 0;
 
-	if (!NT_SUCCESS(ntStatus)) {
-		delete hDeviceDir;
-		_tprintf(_T("Failed NtOpenDirectoryObject with 0x%08X\n"), ntStatus);
-		return 1;
-	}
-	
-	return 0;
-}
-
-int PrintObjects(NTSTATUS& ntStatus, HANDLE& hDeviceDir, BYTE* buf) {
-	ULONG start = 0, idx = 0, bytes;
-	BOOLEAN restart = TRUE;
-
-	std::vector<OBJECT_DIRECTORY_INFORMATION> entries;
-
-	while (true) {
-		ntStatus = NtQueryDirectoryObject(hDeviceDir, PBYTE(buf), BUFFER_SIZE, FALSE, restart, &idx, &bytes);
-
-		if (NT_SUCCESS(ntStatus)) {
-			POBJECT_DIRECTORY_INFORMATION const pdilist = reinterpret_cast<POBJECT_DIRECTORY_INFORMATION>(PBYTE(buf));
-			for (ULONG i = 0; i < idx - start; i++)
-			{
-				entries.push_back(pdilist[i]);
-			}
+	for (size_t i = 0; i < entries.size(); i++) {
+		int nameLength = wcslen(entries[i].Name.Buffer);
+		int typeLength = wcslen(entries[i].TypeName.Buffer);
+		if (nameLength > maxNameLength) {
+			maxNameLength = nameLength;
 		}
-
-		if (STATUS_MORE_ENTRIES == ntStatus)
-		{
-			start = idx;
-			restart = FALSE;
-			continue;
-		}
-
-		if ((ntStatus == STATUS_SUCCESS) || (ntStatus == STATUS_NO_MORE_ENTRIES))
-		{
-			std::sort(entries.begin(), entries.end(), [](const OBJECT_DIRECTORY_INFORMATION& a, const OBJECT_DIRECTORY_INFORMATION& b) {
-				return wcscmp(a.TypeName.Buffer, b.TypeName.Buffer) < 0;
-			});
-			for (OBJECT_DIRECTORY_INFORMATION& elem : entries) {
-				_tprintf(_T("Name: %s\tType: %s\n"), elem.Name.Buffer, elem.TypeName.Buffer);
-			}
-
-			break;
+		if (typeLength > maxTypeLength) {
+			maxTypeLength = typeLength;
 		}
 	}
 
+	std::wstring formatString = L"| %-" + std::to_wstring(maxNameLength) + L"s | %-" + std::to_wstring(maxTypeLength) + L"s |\n";
+
+	_tprintf(_T("%s\n"), std::wstring(maxNameLength + maxTypeLength + 7, '-').c_str());
+	_tprintf(formatString.c_str(), _T("Name"), _T("TypeName"));
+	_tprintf(_T("%s\n"), std::wstring(maxNameLength + maxTypeLength + 7, '-').c_str());
+	for (size_t i = 0; i < entries.size(); i++) {
+		_tprintf(formatString.c_str(), entries[i].Name.Buffer, entries[i].TypeName.Buffer);
+	}
+	_tprintf(_T("%s"), std::wstring(maxNameLength + maxTypeLength + 7, '-').c_str());
+
 	return 0;
 }
+
+
 
 int _tmain(int argc, _TCHAR** argv)
 {
@@ -80,18 +57,21 @@ int _tmain(int argc, _TCHAR** argv)
 	OBJECT_ATTRIBUTES oa;
 	UNICODE_STRING objname;
 	HANDLE hDeviceDir = NULL;
-	BYTE* buf = new BYTE[BUFFER_SIZE];
-	
-	if (GetObjects(ntStatus, oa, objname, hDeviceDir, path, buf) != 0) {
+	BYTE* buffer = new BYTE[BUFFER_SIZE];
+	std::vector<OBJECT_DIRECTORY_INFORMATION> entries;
+
+	if (OpenDirectoryObject(ntStatus, oa, objname, hDeviceDir, path) != 0) {
 		_tprintf(_T("Failed to read Directory Objects\n"));
 
 		(void)NtClose_(hDeviceDir);
-		delete buf;
+		delete buffer;
 		return 1;
 	}
-	PrintObjects(ntStatus, hDeviceDir, buf);
+
+	ProcessDirectoryObjects(ntStatus, hDeviceDir, buffer, entries);
+	PrintDirectoryObjectsInfo(entries);
 
 	(void)NtClose_(hDeviceDir);
-	delete buf;
+	delete buffer;
 	return 0;
 }

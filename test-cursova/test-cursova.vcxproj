@@ -24,6 +24,7 @@
     <ProjectGuid>{464a537f-e1d8-4780-989b-832c6b96b1c7}</ProjectGuid>
     <RootNamespace>testcursova</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+    <ProjectName>namespaceexp</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
