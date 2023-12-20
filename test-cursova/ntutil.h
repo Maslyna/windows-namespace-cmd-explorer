@@ -1,79 +1,70 @@
 #pragma once
 
-#ifndef BUFFER_SIZE
-#define BUFFER_SIZE						(0x10000)
-#endif 
+#include <vector>
+#include <Windows.h>
+#include <winternl.h>
+#include "ntnames.h"
+#include "ntobj.h"
+#include "ntfunctions.h"
 
-// NT DIRECTORY
-
-#ifndef DIRECTORY_QUERY					// Query access to the directory object.
-#define DIRECTORY_QUERY                 (0x0001)
-#endif // !DIRECTORY_QUERY				
-#ifndef DIRECTORY_TRAVERSE				// Name-lookup access to the directory object.
-#define DIRECTORY_TRAVERSE              (0x0002)
-#endif // !DIRECTORY_TRAVERSE			
-#ifndef DIRECTORY_CREATE_OBJECT			// Name-creation access to the directory object.
-#define DIRECTORY_CREATE_OBJECT			(0x0004)
-#endif // !DIRECTORY_CREATE_OBJECT		
-#ifndef DIRECTORY_CREATE_SUBDIRECTORY	// Subdirectory-creation access to the directory object.
-#define DIRECTORY_CREATE_SUBDIRECTORY	(0x0008)
-#endif // !DIRECTORY_CREATE_SUBDIRECTORY
-
-
-// NT STATUS
-
-#ifndef STATUS_SUCCESS
-#define STATUS_SUCCESS                   ((NTSTATUS)0x00000000L) // ntsubauth
-#endif // STATUS_SUCCESS
-#ifndef STATUS_MORE_ENTRIES
-#define STATUS_MORE_ENTRIES              ((NTSTATUS)0x00000105L)
-#endif // STATUS_MORE_ENTRIES
-#ifndef STATUS_NO_MORE_ENTRIES
-#define STATUS_NO_MORE_ENTRIES           ((NTSTATUS)0x8000001AL)
-#endif // STATUS_NO_MORE_ENTRIES
-
-// NT FUNCTIONS
-
-NTSTATUS(NTAPI* NtOpenDirectoryObject)(PHANDLE, ACCESS_MASK, POBJECT_ATTRIBUTES);
-NTSTATUS(NTAPI* NtQueryDirectoryObject)(HANDLE, PVOID, ULONG, BOOLEAN, BOOLEAN, PULONG, PULONG);
-VOID(NTAPI* RtlInitUnicodeString_)(PUNICODE_STRING, PCWSTR);
-NTSTATUS(NTAPI* NtClose_)(HANDLE);
+typedef enum OBJECT_TYPE {
+	DIRECTORY_OBJECT,
+	SYMBOLICLINK_OBJECT,
+	MUTANT_OBJECT,
+	SECTION_OBJECT,
+	EVENT_OBJECT,
+	SEMAPHORE_OBJECT,
+	TIMER_OBJECT,
+	KEY_OBJECT,
+	EVENTPAIR_OBJECT,
+	IOCOMPLETION_OBJECT,
+	FILE_OBJECT
+};
 
 
+// INIT FUNCTION
 
-//OPEN FILE:
-//__kernel_entry NTSTATUS NtOpenFile(
-//	[out] PHANDLE            FileHandle,
-//	[in]  ACCESS_MASK        DesiredAccess,
-//	[in]  POBJECT_ATTRIBUTES ObjectAttributes,
-//	[out] PIO_STATUS_BLOCK   IoStatusBlock,
-//	[in]  ULONG              ShareAccess,
-//	[in]  ULONG              OpenOptions
-//); 
-
-// DIRECTORY_INFORMATION
-
-typedef struct _OBJECT_DIRECTORY_INFORMATION {
-	UNICODE_STRING Name;
-	UNICODE_STRING TypeName;
-} OBJECT_DIRECTORY_INFORMATION, * POBJECT_DIRECTORY_INFORMATION;
-
-// INIT FOUNCTION
-
+#ifndef INIT_NT_MODULE_H
+#define INIT_NT_MODULE_H
 int InitNtModule() {
 	HMODULE hNtDll = ::GetModuleHandle(_T("ntdll.dll"));
+
 	*(FARPROC*)&NtOpenDirectoryObject = ::GetProcAddress(hNtDll, "NtOpenDirectoryObject");
+	*(FARPROC*)&NtOpenSymbolicLinkObject = ::GetProcAddress(hNtDll, "NtOpenSymbolicLinkObject");
+	*(FARPROC*)&NtOpenMutant = ::GetProcAddress(hNtDll, "NtOpenMutant");
+	*(FARPROC*)&NtOpenSection = ::GetProcAddress(hNtDll, "NtOpenSection");
+	*(FARPROC*)&NtOpenEvent = ::GetProcAddress(hNtDll, "NtOpenEvent");
+	*(FARPROC*)&NtOpenSemaphore = ::GetProcAddress(hNtDll, "NtOpenSemaphore");
+	*(FARPROC*)&NtOpenTimer = ::GetProcAddress(hNtDll, "NtOpenTimer");
+	
+	//*(FARPROC*)&NtQueryObject = ::GetProcAddress(hNtDll, "NtQueryObject");
 	*(FARPROC*)&NtQueryDirectoryObject = ::GetProcAddress(hNtDll, "NtQueryDirectoryObject");
+	*(FARPROC*)&NtQuerySymbolicLinkObject = ::GetProcAddress(hNtDll, "NtQuerySymbolicLinkObject");
+	*(FARPROC*)&NtQueryMutant = ::GetProcAddress(hNtDll, "NtQueryMutant");
+	*(FARPROC*)&NtQuerySection = ::GetProcAddress(hNtDll, "NtQuerySection");
+	*(FARPROC*)&NtQueryEvent = ::GetProcAddress(hNtDll, "NtQueryEvent");
+	*(FARPROC*)&NtQuerySemaphore = ::GetProcAddress(hNtDll, "NtQuerySemaphore");
+	*(FARPROC*)&NtQueryTimer = ::GetProcAddress(hNtDll, "NtQueryTimer");
+
+
 	*(FARPROC*)&RtlInitUnicodeString_ = ::GetProcAddress(hNtDll, "RtlInitUnicodeString");
 	*(FARPROC*)&NtClose_ = ::GetProcAddress(hNtDll, "NtClose");
-	if (!NtOpenDirectoryObject || !NtQueryDirectoryObject || !RtlInitUnicodeString_ || !NtClose_)
-	{
-		_tprintf(_T("Failed to retrieve ntdll.dll function pointers\n"));
+
+	if (!NtOpenDirectoryObject || !RtlInitUnicodeString_ || !NtClose_
+		|| !NtOpenSymbolicLinkObject || !NtOpenMutant || !NtOpenSection || !NtOpenEvent || !NtOpenSemaphore|| !NtOpenTimer) {
+		return 1;
+	}
+	if (!NtQueryDirectoryObject || !NtQuerySymbolicLinkObject || !NtQueryMutant
+		|| !NtQuerySection || !NtQueryEvent || !NtQuerySemaphore || !NtQueryTimer) {
 		return 1;
 	}
 	return 0;
 }
 
+#endif // !INIT_NT_MODULE_H
+
+#ifndef OPEN_DIRECTORY_OBJECT_H
+#define OPEN_DIRECTORY_OBJECT_H
 int OpenDirectoryObject(NTSTATUS& ntStatus, OBJECT_ATTRIBUTES& oa, UNICODE_STRING& objname, HANDLE& hDeviceDir, PCWSTR path) {
 	RtlInitUnicodeString_(&objname, path);
 	InitializeObjectAttributes(&oa, &objname, 0, NULL, NULL);
@@ -81,19 +72,22 @@ int OpenDirectoryObject(NTSTATUS& ntStatus, OBJECT_ATTRIBUTES& oa, UNICODE_STRIN
 
 	if (!NT_SUCCESS(ntStatus)) {
 		delete hDeviceDir;
-		_tprintf(_T("Failed NtOpenDirectoryObject with 0x%08X\n"), ntStatus);
 		return 1;
 	}
 
 	return 0;
 }
+#endif // OPEN_DIRECTORY_OBJECT_H
+
+#ifndef PROCESS_DIRECTORY_OBJECT_H
+#define PROCESS_DIRECTORY_OBJECT_H
 
 int ProcessDirectoryObjects(NTSTATUS& ntStatus, HANDLE& hDeviceDir, BYTE* buf, std::vector<OBJECT_DIRECTORY_INFORMATION>& entries) {
 	ULONG start = 0, idx = 0, bytes;
 	BOOLEAN restart = TRUE;
 
 	while (true) {
-		ntStatus = NtQueryDirectoryObject(hDeviceDir, PBYTE(buf), BUFFER_SIZE, FALSE, restart, &idx, &bytes);
+		ntStatus = NtQueryDirectoryObject(hDeviceDir, buf, BUFFER_SIZE, FALSE, restart, &idx, &bytes);
 
 		if (NT_SUCCESS(ntStatus)) {
 			POBJECT_DIRECTORY_INFORMATION const pdilist = reinterpret_cast<POBJECT_DIRECTORY_INFORMATION>(PBYTE(buf));
@@ -112,15 +106,79 @@ int ProcessDirectoryObjects(NTSTATUS& ntStatus, HANDLE& hDeviceDir, BYTE* buf, s
 
 		if ((ntStatus == STATUS_SUCCESS) || (ntStatus == STATUS_NO_MORE_ENTRIES))
 		{
-			//std::sort(entries.begin(), entries.end(), [](const OBJECT_DIRECTORY_INFORMATION& a, const OBJECT_DIRECTORY_INFORMATION& b) {
-			//	return wcscmp(a.TypeName.Buffer, b.TypeName.Buffer) < 0;
-			//});
-			//for (OBJECT_DIRECTORY_INFORMATION& elem : entries) {
-			//	_tprintf(_T("Name: %s \tType: %s\n"), elem.Name.Buffer, elem.TypeName.Buffer);
-			//}
 			return 0;
 		}
 	}
-
+	
 	return 0;
 }
+#endif // !PROCESS_DIRECTORY_OBJECT_H
+
+#ifndef PROCESS_SYMBOLIC_LINK_OBJECT_H
+#define PROCESS_SYMBOLIC_LINK_OBJECT_H
+NTSTATUS ProcessSymbolicLinkObject(HANDLE& handle, UNICODE_STRING& link) {
+	return NtQuerySymbolicLinkObject(&handle, &link, NULL);
+}
+#endif // ! PROCESS_SYMBOLIC_LINK_OBJECT_H
+
+
+#ifndef NT_OPEN_OBJECT_H
+#define NT_OPEN_OBJECT_H
+NTSTATUS NtOpenObject(OBJECT_TYPE type, HANDLE& handle, OBJECT_ATTRIBUTES& openStruct, ACCESS_MASK access, LPCWSTR path) {
+	UNICODE_STRING ustr;
+
+	RtlInitUnicodeString_(&ustr, path);
+
+	InitializeObjectAttributes(&openStruct, &ustr, OBJ_CASE_INSENSITIVE, NULL, NULL);
+
+	switch (type)
+	{
+	case DIRECTORY_OBJECT:      return NtOpenDirectoryObject(&handle, access, &openStruct);
+	case SYMBOLICLINK_OBJECT:   return NtOpenSymbolicLinkObject(&handle, access, &openStruct);
+	case MUTANT_OBJECT:         return NtOpenMutant(&handle, access, &openStruct);
+	case SECTION_OBJECT:        return NtOpenSection(&handle, access, &openStruct);
+	case EVENT_OBJECT:          return NtOpenEvent(&handle, access, &openStruct);
+	case SEMAPHORE_OBJECT:      return NtOpenSemaphore(&handle, access, &openStruct);
+	case TIMER_OBJECT:          return NtOpenTimer(&handle, access, &openStruct);
+	default:
+		return ERROR_INVALID_FUNCTION;
+	}
+}
+#endif // !NT_OPEN_OBJECT_H
+
+//#ifndef PROCESS_NT_OBJECT_H
+//#define PROCESS_NT_OBJECT_H
+//NTSTATUS NtQueryObject(OBJECT_TYPE type, HANDLE& handle) {
+//	switch (type)
+//	{
+//	case DIRECTORY_OBJECT:      return NtQueryDirectoryObject(&handle, );
+//	case SYMBOLICLINK_OBJECT:   return NtQuerySymbolicLinkObject();
+//	case MUTANT_OBJECT:         return NtOpenMutant(&handle, access, &openStruct);
+//	case SECTION_OBJECT:        return NtOpenSection(&handle, access, &openStruct);
+//	case EVENT_OBJECT:          return NtOpenEvent(&handle, access, &openStruct);
+//	case SEMAPHORE_OBJECT:      return NtOpenSemaphore(&handle, access, &openStruct);
+//	case TIMER_OBJECT:          return NtOpenTimer(&handle, access, &openStruct);
+//	default:
+//		return ERROR_INVALID_FUNCTION;
+//	}
+//}
+//
+//#endif // !PROCESS_NT_OBJECT_H
+
+
+#ifndef GET_NT_OBJECT_TYPE_H
+#define GET_NT_OBJECT_TYPE_H
+int GetObjectType(PCWSTR objectTypeStr, OBJECT_TYPE& result)
+{
+	if		(wcscmp(objectTypeStr, L"Directory") == 0)			result = DIRECTORY_OBJECT;
+	else if (wcscmp(objectTypeStr, L"SymbolicLink") == 0)		result = SYMBOLICLINK_OBJECT;
+	else if (wcscmp(objectTypeStr, L"Mutant") == 0)				result = MUTANT_OBJECT;
+	else if (wcscmp(objectTypeStr, L"Section") == 0)			result = SECTION_OBJECT;
+	else if (wcscmp(objectTypeStr, L"Event") == 0)				result = EVENT_OBJECT;
+	else if (wcscmp(objectTypeStr, L"Semaphore") == 0)			result = SEMAPHORE_OBJECT;
+	else if (wcscmp(objectTypeStr, L"Timer") == 0)				result = TIMER_OBJECT;
+	else if (wcscmp(objectTypeStr, L"Key") == 0)				result = KEY_OBJECT;
+	else return -1; // Return -1 or throw an exception for unknown object types
+	return 0;
+}
+#endif

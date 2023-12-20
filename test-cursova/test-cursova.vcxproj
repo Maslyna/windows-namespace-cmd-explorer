@@ -128,10 +128,15 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="cmdutil.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="cmdutil.h" />
+    <ClCompile Include="ntnames.h" />
+    <ClCompile Include="ntutil.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="ntfunctions.h" />
+    <ClInclude Include="ntobj.h" />
     <ClInclude Include="ntutil.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
