@@ -146,26 +146,6 @@ NTSTATUS NtOpenObject(OBJECT_TYPE type, HANDLE& handle, OBJECT_ATTRIBUTES& openS
 }
 #endif // !NT_OPEN_OBJECT_H
 
-//#ifndef PROCESS_NT_OBJECT_H
-//#define PROCESS_NT_OBJECT_H
-//NTSTATUS NtQueryObject(OBJECT_TYPE type, HANDLE& handle) {
-//	switch (type)
-//	{
-//	case DIRECTORY_OBJECT:      return NtQueryDirectoryObject(&handle, );
-//	case SYMBOLICLINK_OBJECT:   return NtQuerySymbolicLinkObject();
-//	case MUTANT_OBJECT:         return NtOpenMutant(&handle, access, &openStruct);
-//	case SECTION_OBJECT:        return NtOpenSection(&handle, access, &openStruct);
-//	case EVENT_OBJECT:          return NtOpenEvent(&handle, access, &openStruct);
-//	case SEMAPHORE_OBJECT:      return NtOpenSemaphore(&handle, access, &openStruct);
-//	case TIMER_OBJECT:          return NtOpenTimer(&handle, access, &openStruct);
-//	default:
-//		return ERROR_INVALID_FUNCTION;
-//	}
-//}
-//
-//#endif // !PROCESS_NT_OBJECT_H
-
-
 #ifndef GET_NT_OBJECT_TYPE_H
 #define GET_NT_OBJECT_TYPE_H
 int GetObjectType(PCWSTR objectTypeStr, OBJECT_TYPE& result)
@@ -177,8 +157,7 @@ int GetObjectType(PCWSTR objectTypeStr, OBJECT_TYPE& result)
 	else if (wcscmp(objectTypeStr, L"Event") == 0)				result = EVENT_OBJECT;
 	else if (wcscmp(objectTypeStr, L"Semaphore") == 0)			result = SEMAPHORE_OBJECT;
 	else if (wcscmp(objectTypeStr, L"Timer") == 0)				result = TIMER_OBJECT;
-	else if (wcscmp(objectTypeStr, L"Key") == 0)				result = KEY_OBJECT;
-	else return -1; // Return -1 or throw an exception for unknown object types
+	else return -1;
 	return 0;
 }
 #endif
