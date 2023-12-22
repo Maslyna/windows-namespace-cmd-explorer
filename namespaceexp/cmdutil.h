@@ -3,25 +3,20 @@
 #include <vector>
 #include <tchar.h>
 #include <Windows.h>
+#include "ntutil.h"
 
 class CommandLineParser {
 public:
-    int GetArgParam(int argc, _TCHAR** argv, PCWSTR elem, PCWSTR& result) {
-        for (int i = 1; i < argc; i++) {
-            if (_tcscmp(argv[i], elem) == 0 && i + 1 < argc) {
-                result = argv[i + 1];
-                return 0;
-            }
-        }
-        return 1;
-    }
-
-    bool ArgParamExists(int argc, _TCHAR** argv, PCWSTR elem) {
-        for (int i = 1; i < argc; i++) {
-            if (_tcscmp(argv[i], elem) == 0) {
-                return true;
-            }
-        }
-        return false;
-    }
+    int GetArgParam(int argc, _TCHAR** argv, PCWSTR elem, PCWSTR& result);
+    bool ArgParamExists(int argc, _TCHAR** argv, PCWSTR elem);
 };
+
+
+int PrintHelp();
+int PrintDirectoryObjectsInfo(std::vector<OBJECT_DIRECTORY_INFORMATION> entries);
+int PrintSymbolicLinkInfo(PUNICODE_STRING link);
+int PrintMutantInfo(PMUTANT_BASIC_INFORMATION mutant);
+int PrintSectionInfo(PSECTION_BASIC_INFORMATION section);
+int PrintEventInfo(PEVENT_BASIC_INFORMATION eventObj);
+int PrintSemaphoreInfo(PSEMAPHORE_BASIC_INFORMATION semaphore);
+int PrintTimerInfo(PTIMER_BASIC_INFORMATION timer);

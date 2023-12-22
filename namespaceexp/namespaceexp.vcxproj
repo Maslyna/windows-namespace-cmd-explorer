@@ -119,6 +119,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -135,7 +136,6 @@
     <ClCompile Include="ntutil.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="ntfunctions.h" />
     <ClInclude Include="ntobj.h" />
     <ClInclude Include="ntutil.h" />
   </ItemGroup>

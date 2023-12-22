@@ -38,8 +38,5 @@
     <ClInclude Include="ntobj.h">
       <Filter>Source Files</Filter>
     </ClInclude>
-    <ClInclude Include="ntfunctions.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
   </ItemGroup>
 </Project>
